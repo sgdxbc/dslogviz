@@ -1,7 +1,7 @@
 const ui = { header: null, stats: null }
 
-const logName = "lab0-test1.txt";
-const logContent =
+let logName = "lab0-test1.txt";
+let logContent =
   processLog(`[FINEST ] [2025-01-20 15:01:01.173989014] [dslabs.framework.Node] MessageSend(client1 -> pingserver, PingRequest(ping=PingApplication.Ping(value=Hello, World!)))
 [FINEST ] [2025-01-20 15:01:01.182533829] [dslabs.framework.Node] TimerSet(-> client1, PingTimer(ping=PingApplication.Ping(value=Hello, World!)))
 [FINER  ] [2025-01-20 15:01:01.188420714] [dslabs.framework.Node] MessageReceive(client1 -> pingserver, PingRequest(ping=PingApplication.Ping(value=Hello, World!)))
@@ -30,10 +30,10 @@ function createUI() {
 
     const fileReader = new FileReader();
     fileReader.onload = () => {
-      logFile.name = file.name;
+      logName = file.name;
       ui.header.innerHTML = "Processing";
       requestAnimationFrame(() => {
-        logFile.content = processLog(fileReader.result);
+        logContent = processLog(fileReader.result);
         renderUI();
       });
     };
@@ -41,6 +41,19 @@ function createUI() {
     fileReader.readAsText(file);
   });
   app.appendChild(uploadButton);
+
+  const instruction = document.createElement('div');
+  instruction.innerHTML = `<ul>
+  <li>Usage: run <code>run-tests.py</code> with additional arguments <code>-g FINEST 2>$LOG_FILE</code>, for example
+  <pre>./run-tests.py --lab 0 --test 1 -g FINEST 2>lab0-test1.txt</pre>
+  then load the dumped log file here.</li>
+  <li>Only logs are supported. Use e.g. <code>LOG.info(...)</code> instead of <code>System.out.println(...)</code> to produce custom logs.</li>
+  <li>Use left and right arrow keys to move around the timeline. Use up and down arrow keys to zoom in and zoom out the timeline.</li>
+  <li>The visualization cannot identify the idle period of nodes with the logs produced by the testing framework and assumes the nodes are always processing messages and timers.
+  The actual processing may be ended before the rendered time (which is implied by the fading out).</li>
+  <li>Logging may affect the performance and concurrency of the solution. Make sure to rerun the test with logging disabled after it passes with logging enabled.</li>
+</ul>`;
+  app.appendChild(instruction);
 
   ui.stats = document.createElement('div');
   app.appendChild(ui.stats);
@@ -59,12 +72,12 @@ function processLog(text) {
     if (line === "") {
       continue;
     }
-    const reLevel = /\[(FINEST|FINER) *\]/.source;
-    const reTime = /\[(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3})(\d{6})\]/.source;
-    const reSource = /\[([\w\.]*)\]/.source;
-    const reMessage = /(MessageSend|MessageReceive)\((\w+) -> (\w+), (\w+)\((.*)\)\)/.source;
-    const reTimer = /(TimerSet|TimerReceive)\(-> (\w+), (\w+)\((.*)\)\)/.source;
-    const reOther = /(.*)/.source;
+    const reLevel = String.raw`\[(FINEST|FINER) *\]`;
+    const reTime = String.raw`\[(\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3})(\d{6})\]`;
+    const reSource = String.raw`\[([\w\.]*)\]`;
+    const reMessage = String.raw`(MessageSend|MessageReceive)\((\w+) -> (\w+), (\w+)\((.*)\)\)`;
+    const reTimer = String.raw`(TimerSet|TimerReceive)\(-> (\w+), (\w+)\((.*)\)\)`;
+    const reOther = String.raw`(.*)`;
     const re = new RegExp(`^${reLevel} ${reTime} ${reSource} (${reMessage}|${reTimer}|${reOther})`);
     const m = line.match(re);
     if (m === null) {
