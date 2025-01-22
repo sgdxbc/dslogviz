@@ -242,7 +242,7 @@ function renderUI() {
 
     const label = document.createElement('div');
     node.appendChild(label);
-    label.className = "node-lable";
+    label.className = "node-label";
     label.innerText = nodeName;
 
     nodeElements.set(nodeName, nodeEvents);
@@ -250,6 +250,9 @@ function renderUI() {
 
   viewStart = 0;
   viewEnd = 25;
+  eventElements = new Map();
+  eventElementsStart = 0;
+  eventElementsEnd = 0;
   renderView();
 }
 
