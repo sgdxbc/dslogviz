@@ -1,4 +1,4 @@
-const ui = { header: null, stats: null }
+const ui = { header: null, stats: null, viewStats: null, viewTimeTicks: null, viewNodes: new Map() }
 
 let logName = "lab0-test1.txt";
 let logContent =
@@ -20,6 +20,7 @@ function createUI() {
   app.appendChild(ui.header);
 
   const uploadButton = document.createElement("input");
+  uploadButton.id = "upload-log-file";
   uploadButton.type = "file";
   uploadButton.addEventListener('change', () => {
     if (uploadButton.files === null) {
@@ -40,6 +41,11 @@ function createUI() {
     ui.header.innerHTML = "Loading";
     fileReader.readAsText(file);
   });
+  const uploadButtonLabel = document.createElement('label');
+  uploadButtonLabel.innerText = "Log File";
+  uploadButtonLabel.htmlFor = "upload-log-file";
+  uploadButtonLabel.hidden = true;
+  app.appendChild(uploadButtonLabel);
   app.appendChild(uploadButton);
 
   const instruction = document.createElement('div');
@@ -49,14 +55,45 @@ function createUI() {
   then load the dumped log file here.</li>
   <li>Only logs are supported. Use e.g. <code>LOG.info(...)</code> instead of <code>System.out.println(...)</code> to produce custom logs.</li>
   <li>Use left and right arrow keys to move around the timeline. Use up and down arrow keys to zoom in and zoom out the timeline.</li>
+  <li>This visualization tool is only for run tests; do not use it with search tests. Actually, never enable logging for search tests.</li>
   <li>The visualization cannot identify the idle period of nodes with the logs produced by the testing framework and assumes the nodes are always processing messages and timers.
   The actual processing may be ended before the rendered time (which is implied by the fading out).</li>
   <li>Logging may affect the performance and concurrency of the solution. Make sure to rerun the test with logging disabled after it passes with logging enabled.</li>
+  <li>This visualization tool is not intended to serve as an end-to-end debugging solution for run tests, different from the DSLabs' built-in visualization (for search tests).
+  The users are still expected to understand the logs and be able to manually exam the logs (and probably actually manually exam the simple ones), and only use this as a viewer to perceive the logs more efficiently.</li>
 </ul>`;
   app.appendChild(instruction);
 
   ui.stats = document.createElement('div');
   app.appendChild(ui.stats);
+
+  const view = document.createElement('div');
+  view.style.margin = "10px";
+  view.style.border = "1px solid";
+  app.appendChild(view);
+
+  ui.viewStats = document.createElement('div');
+  view.appendChild(ui.viewStats);
+
+  const viewTime = document.createElement('div');
+  view.appendChild(viewTime);
+  viewTime.innerText = "Time (ms)";
+  viewTime.style.height = "50px";
+  viewTime.style.marginBottom = "10px";
+  viewTime.style.borderBottomStyle = "solid";
+  viewTime.style.lineHeight = "40px";
+  ui.viewTimeTicks = document.createElement('div');
+  viewTime.appendChild(ui.viewTimeTicks);
+  ui.viewTimeTicks.style.position = "relative";
+  ui.viewTimeTicks.style.marginLeft = "50px";
+  ui.viewTimeTicks.style.marginRight = "50px";
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key.startsWith('Arrow')) {
+      event.preventDefault();
+      updateViewTimeRange(event.key);
+    }
+  });
 
   renderUI();
 }
@@ -110,7 +147,7 @@ function processLog(text) {
       const content = m[15];
       event = { time, type: "*", level, content };
     }
-    console.log(event);
+    // console.log(event);
 
     if (event.type === "MessageReceive" || event.type === "TimerReceive") {
       spans.push(event);
@@ -155,13 +192,64 @@ function processLog(text) {
       }
     }
   }
-  return { spans, events, logOffset, nodes: new Array(...nodes) };
+  return { spans, events, offset: logOffset, nodes: new Array(...nodes) };
 }
+
+let viewStart = 0, viewEnd = 25;
 
 function renderUI() {
   ui.header.innerHTML = `<strong>DSLabs Log Visualizer:</strong> ${logName}`;
   const duration = logContent.spans.length === 0 ? 0 : Math.round(logContent.spans[logContent.spans.length - 1].time);
-  ui.stats.innerHTML = `Duration ${duration}ms`;
+  ui.stats.innerHTML = `<strong>Start</strong> ${new Date(logContent.offset).toLocaleString()} <strong>Duration</strong> ${duration}ms`;
+
+  viewStart = 0;
+  viewEnd = 25;
+  renderView();
+}
+
+function renderView() {
+  const durationMillis = viewEnd - viewStart;
+  ui.viewStats.innerHTML = `<strong>View Duration</strong> ${durationMillis}ms`;
+
+  ui.viewTimeTicks.innerHTML = "";
+  const tickMillis = Math.max(Math.floor(durationMillis / 10), 1);
+  for (let time = Math.ceil(viewStart / tickMillis) * tickMillis; time < viewEnd; time += tickMillis) {
+    const tick = document.createElement('div');
+    ui.viewTimeTicks.appendChild(tick);
+    tick.innerText = `${time}`;
+    tick.style.position = "absolute";
+    tick.style.left = leftPosition(time);
+    tick.style.top = "-20px";
+  }
+}
+
+function leftPosition(time) {
+  return `${(time - viewStart) / (viewEnd - viewStart) * 100}%`;
+}
+
+function updateViewTimeRange(key) {
+  if (key === "ArrowLeft") {
+    const offset = Math.min((viewEnd - viewStart) * 0.1, viewStart);
+    viewStart -= offset;
+    viewEnd -= offset;
+  }
+  if (key === "ArrowRight") {
+    const offset = (viewEnd - viewStart) * 0.1;
+    viewStart += offset;
+    viewEnd += offset;
+  }
+  if (key === "ArrowUp") {
+    const offset = (viewEnd - viewStart) * 0.33;
+    viewStart += offset / 2;
+    viewEnd -= offset / 2;
+  }
+  if (key === "ArrowDown") {
+    const offset = (viewEnd - viewStart) * 0.5;
+    const leftOffset = Math.min(offset / 2, viewStart);
+    viewStart -= leftOffset;
+    viewEnd += offset - leftOffset;
+  }
+  renderView();
 }
 
 document.addEventListener('DOMContentLoaded', createUI);
