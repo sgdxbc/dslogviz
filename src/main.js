@@ -106,6 +106,7 @@ function processLog(text) {
   const events = [];
   let logOffset = 0;
   const nodes = new Set();
+  const nodeSpans = new Map();
   const inflightMessageSend = [];
   const inflightTimerSet = [];
   for (let line of text.split('\n')) {
@@ -152,7 +153,24 @@ function processLog(text) {
     }
     // console.log(event);
 
+    let index = events.length;
     events.push(event);
+
+    let node = null;
+    if (event.type === "MessageReceive") {
+      node = event.receiveNode;
+    }
+    if (event.type === "TimerReceive") {
+      node = event.node;
+    }
+    if (node !== null) {
+      const lastIndex = nodeSpans.get(node);
+      if (lastIndex !== undefined) {
+        events[lastIndex].timeEnd = event.time;
+        event.previousIndex = lastIndex;
+      }
+      nodeSpans.set(node, index);
+    }
 
     // if there are multiple identical inflight events, assuming they are arriving in order
     if (event.type === "MessageSend") {
@@ -190,6 +208,12 @@ function processLog(text) {
         }
       }
     }
+  }
+
+  for (const index of nodeSpans.values()) {
+    events[index].timeEnd = Infinity;
+    // no span keeps track of these last spans so they won't appear when their "tails" are in the view
+    // should be minor, but still would be good to be solved
   }
   return { events, offset: logOffset, nodes: new Array(...nodes) };
 }
@@ -272,7 +296,6 @@ function renderView() {
       break;
     }
     const eventElement = createEventElement(event);
-    eventElement.style.left = leftPosition(event.time);
     appendEventElement(event, eventElement);
 
     eventElements.set(i, eventElement);
@@ -284,7 +307,6 @@ function renderView() {
       break;
     }
     const eventElement = createEventElement(event);
-    eventElement.style.left = leftPosition(event.time);
     appendEventElement(event, eventElement);
 
     eventElements.set(i - 1, eventElement);
@@ -327,10 +349,19 @@ function createEventElement(event) {
   const eventElement = document.createElement('div');
   eventElement.innerText = event.type;
   eventElement.style.border = "1px solid";
-  eventElement.style.width = "100px";
+  if (event.type.endsWith("Receive")) {
+    if (event.timeEnd !== Infinity) {
+      eventElement.style.width = `calc(${leftPosition(event.timeEnd)} - ${leftPosition(event.time)} - 10px)`;
+    } else {
+      eventElement.style.width = "999px";
+    }
+  } else {
+    eventElement.style.width = "100px";
+  }
   eventElement.style.height = "50px";
   eventElement.style.background = "white";
   eventElement.style.position = "absolute";
+  eventElement.style.left = leftPosition(event.time);
   return eventElement;
 }
 
