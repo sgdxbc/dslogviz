@@ -1,0 +1,46 @@
+@import '/node_modules/@fortawesome/fontawesome-free/css/all.min.css';
+
+#view {
+    margin: 10px;
+    border: 1px solid;
+}
+
+.row {
+    height: 100px;
+    margin-bottom: 50px;
+    border-bottom: solid;
+    padding-top: 20px;
+}
+
+.row#time {
+    height: 50px;
+    margin-bottom: 20px;
+}
+
+.timeline-container {
+    position: relative;
+    margin: 0 50px;
+}
+
+.tick {
+    position: absolute;
+    top: 10px;
+}
+
+.event {
+    position: absolute;
+    top: 40px;
+}
+
+.event .fa-solid {
+    font-size: 40px;
+    margin-bottom: 10px;
+}
+
+.span {
+    position: absolute;
+    top: 20px;
+    border: 1px solid;
+    font-size: 20px;
+    line-height: 120px;
+}

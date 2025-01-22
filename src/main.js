@@ -1,3 +1,5 @@
+import './style.css'
+
 const ui = { header: null, stats: null, view: null, viewStats: null, viewTimeTicks: null, viewNodes: null }
 
 let logName = "lab0-test1.txt";
@@ -21,6 +23,7 @@ function createUI() {
   app.appendChild(ui.header);
 
   const uploadButton = document.createElement("input");
+  app.appendChild(uploadButton);
   uploadButton.id = "upload-log-file";
   uploadButton.type = "file";
   uploadButton.addEventListener('change', () => {
@@ -42,14 +45,15 @@ function createUI() {
     ui.header.innerHTML = "Loading";
     fileReader.readAsText(file);
   });
+
   const uploadButtonLabel = document.createElement('label');
+  app.appendChild(uploadButtonLabel);
   uploadButtonLabel.innerText = "Log File";
   uploadButtonLabel.htmlFor = "upload-log-file";
   uploadButtonLabel.hidden = true;
-  app.appendChild(uploadButtonLabel);
-  app.appendChild(uploadButton);
 
   const instruction = document.createElement('div');
+  app.appendChild(instruction);
   instruction.innerHTML = `<ul>
   <li>Usage: run <code>run-tests.py</code> with additional arguments <code>-g FINEST 2>$LOG_FILE</code>, for example
   <pre>./run-tests.py --lab 0 --test 1 -g FINEST 2>lab0-test1.txt</pre>
@@ -63,31 +67,26 @@ function createUI() {
   <li>This visualization tool is not intended to serve as an end-to-end debugging solution for run tests, different from the DSLabs' built-in visualization (for search tests).
   The users are still expected to understand the logs and be able to manually exam the logs (and probably actually manually exam the simple ones), and only use this as a viewer to perceive the logs more efficiently.</li>
 </ul>`;
-  app.appendChild(instruction);
 
   ui.stats = document.createElement('div');
   app.appendChild(ui.stats);
 
   ui.view = document.createElement('div');
-  ui.view.style.margin = "10px";
-  ui.view.style.border = "1px solid";
   app.appendChild(ui.view);
+  ui.view.id = "view";
 
   ui.viewStats = document.createElement('div');
   ui.view.appendChild(ui.viewStats);
 
   const viewTime = document.createElement('div');
   ui.view.appendChild(viewTime);
+  viewTime.id = "time";
+  viewTime.className = "row";
   viewTime.innerText = "Time (ms)";
-  viewTime.style.height = "50px";
-  viewTime.style.marginBottom = "10px";
-  viewTime.style.borderBottomStyle = "solid";
-  viewTime.style.lineHeight = "40px";
+
   ui.viewTimeTicks = document.createElement('div');
   viewTime.appendChild(ui.viewTimeTicks);
-  ui.viewTimeTicks.style.position = "relative";
-  ui.viewTimeTicks.style.marginLeft = "50px";
-  ui.viewTimeTicks.style.marginRight = "50px";
+  ui.viewTimeTicks.className = "timeline-container";
 
   ui.viewNodes = document.createElement('div');
   ui.view.appendChild(ui.viewNodes);
@@ -226,6 +225,7 @@ let eventElementsStart = 0, eventElementsEnd = 0;
 // calling once per loading log file
 function renderUI() {
   ui.header.innerHTML = `<strong>DSLabs Log Visualizer:</strong> ${logName}`;
+
   const duration = logContent.events.length === 0 ? 0 : Math.round(logContent.events[logContent.events.length - 1].time);
   ui.stats.innerHTML = `<strong>Start</strong> ${new Date(logContent.offset).toLocaleString()} <strong>Duration</strong> ${duration}ms (processing the last message/timer may take a bit more)`;
 
@@ -234,16 +234,13 @@ function renderUI() {
   for (const nodeName of logContent.nodes) {
     const node = document.createElement('div');
     ui.viewNodes.appendChild(node);
+    node.className = "row";
     node.innerText = nodeName;
-    node.style.height = "100px";
-    node.style.marginBottom = "50px";
-    node.style.borderBottomStyle = "solid";
-    node.style.lineHeight = "80px";
+
     const nodeEvents = document.createElement('div');
     node.appendChild(nodeEvents);
-    nodeEvents.style.position = "relative";
-    nodeEvents.style.marginLeft = "50px";
-    nodeEvents.style.marginRight = "50px";
+    nodeEvents.className = "timeline-container";
+
     nodeElements.set(nodeName, nodeEvents);
   }
 
@@ -261,10 +258,9 @@ function renderView() {
   for (let time = Math.ceil(viewStart / tickMillis) * tickMillis; time < viewEnd; time += tickMillis) {
     const tick = document.createElement('div');
     ui.viewTimeTicks.appendChild(tick);
+    tick.className = "tick";
     tick.innerText = `${time}`;
-    tick.style.position = "absolute";
     tick.style.left = leftPosition(time);
-    tick.style.top = "-20px";
   }
 
   let i;
@@ -347,21 +343,35 @@ function updateViewTimeRange(key) {
 
 function createEventElement(event) {
   const eventElement = document.createElement('div');
-  eventElement.innerText = event.type;
-  eventElement.style.border = "1px solid";
+  eventElement.style.left = leftPosition(event.time);
+
   if (event.type.endsWith("Receive")) {
+    eventElement.className = "span";
+    eventElement.innerText = event.name;
+
     if (event.timeEnd !== Infinity) {
       eventElement.style.width = `calc(${leftPosition(event.timeEnd)} - ${leftPosition(event.time)} - 10px)`;
     } else {
       eventElement.style.width = "999px";
     }
+    eventElement.style.background = "white";
   } else {
-    eventElement.style.width = "100px";
+    eventElement.className = "event";
+
+    const icon = document.createElement('div');
+    eventElement.appendChild(icon);
+    icon.classList.add("fa-solid");
+    if (event.type === "MessageSend") {
+      icon.classList.add("fa-envelope");
+    }
+    if (event.type === "TimerSet") {
+      icon.classList.add("fa-clock");
+    }
+
+    const name = document.createElement('div');
+    eventElement.appendChild(name);
+    name.innerText = event.name;
   }
-  eventElement.style.height = "50px";
-  eventElement.style.background = "white";
-  eventElement.style.position = "absolute";
-  eventElement.style.left = leftPosition(event.time);
   return eventElement;
 }
 
