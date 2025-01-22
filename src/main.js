@@ -1,4 +1,4 @@
-const ui = { header: null, stats: null, viewStats: null, viewTimeTicks: null, viewNodes: new Map() }
+const ui = { header: null, stats: null, view: null, viewStats: null, viewTimeTicks: null, viewNodes: null }
 
 let logName = "lab0-test1.txt";
 let logContent =
@@ -10,6 +10,7 @@ let logContent =
 [FINER  ] [2025-01-20 15:01:01.195212143] [dslabs.framework.Node] TimerReceive(-> client1, PingTimer(ping=PingApplication.Ping(value=Hello, World!)))
 `);
 
+// calling once globally
 function createUI() {
   const app = document.querySelector("#app");
   if (app === null) {
@@ -67,16 +68,16 @@ function createUI() {
   ui.stats = document.createElement('div');
   app.appendChild(ui.stats);
 
-  const view = document.createElement('div');
-  view.style.margin = "10px";
-  view.style.border = "1px solid";
-  app.appendChild(view);
+  ui.view = document.createElement('div');
+  ui.view.style.margin = "10px";
+  ui.view.style.border = "1px solid";
+  app.appendChild(ui.view);
 
   ui.viewStats = document.createElement('div');
-  view.appendChild(ui.viewStats);
+  ui.view.appendChild(ui.viewStats);
 
   const viewTime = document.createElement('div');
-  view.appendChild(viewTime);
+  ui.view.appendChild(viewTime);
   viewTime.innerText = "Time (ms)";
   viewTime.style.height = "50px";
   viewTime.style.marginBottom = "10px";
@@ -87,6 +88,9 @@ function createUI() {
   ui.viewTimeTicks.style.position = "relative";
   ui.viewTimeTicks.style.marginLeft = "50px";
   ui.viewTimeTicks.style.marginRight = "50px";
+
+  ui.viewNodes = document.createElement('div');
+  ui.view.appendChild(ui.viewNodes);
 
   document.addEventListener('keydown', (event) => {
     if (event.key.startsWith('Arrow')) {
@@ -99,7 +103,6 @@ function createUI() {
 }
 
 function processLog(text) {
-  const spans = [];
   const events = [];
   let logOffset = 0;
   const nodes = new Set();
@@ -149,11 +152,7 @@ function processLog(text) {
     }
     // console.log(event);
 
-    if (event.type === "MessageReceive" || event.type === "TimerReceive") {
-      spans.push(event);
-    } else {
-      events.push(event);
-    }
+    events.push(event);
 
     // if there are multiple identical inflight events, assuming they are arriving in order
     if (event.type === "MessageSend") {
@@ -192,24 +191,46 @@ function processLog(text) {
       }
     }
   }
-  return { spans, events, offset: logOffset, nodes: new Array(...nodes) };
+  return { events, offset: logOffset, nodes: new Array(...nodes) };
 }
 
 let viewStart = 0, viewEnd = 25;
+let nodeElements = new Map();
+let eventElements = new Map();
+let eventElementsStart = 0, eventElementsEnd = 0;
 
+// calling once per loading log file
 function renderUI() {
   ui.header.innerHTML = `<strong>DSLabs Log Visualizer:</strong> ${logName}`;
-  const duration = logContent.spans.length === 0 ? 0 : Math.round(logContent.spans[logContent.spans.length - 1].time);
-  ui.stats.innerHTML = `<strong>Start</strong> ${new Date(logContent.offset).toLocaleString()} <strong>Duration</strong> ${duration}ms`;
+  const duration = logContent.events.length === 0 ? 0 : Math.round(logContent.events[logContent.events.length - 1].time);
+  ui.stats.innerHTML = `<strong>Start</strong> ${new Date(logContent.offset).toLocaleString()} <strong>Duration</strong> ${duration}ms (processing the last message/timer may take a bit more)`;
+
+  ui.viewNodes.innerHTML = "";
+  nodeElements = new Map();
+  for (const nodeName of logContent.nodes) {
+    const node = document.createElement('div');
+    ui.viewNodes.appendChild(node);
+    node.innerText = nodeName;
+    node.style.height = "100px";
+    node.style.marginBottom = "50px";
+    node.style.borderBottomStyle = "solid";
+    node.style.lineHeight = "80px";
+    const nodeEvents = document.createElement('div');
+    node.appendChild(nodeEvents);
+    nodeEvents.style.position = "relative";
+    nodeEvents.style.marginLeft = "50px";
+    nodeEvents.style.marginRight = "50px";
+    nodeElements.set(nodeName, nodeEvents);
+  }
 
   viewStart = 0;
   viewEnd = 25;
   renderView();
 }
 
+// calling once per user interaction (e.g. adjust view)
 function renderView() {
   const durationMillis = viewEnd - viewStart;
-  ui.viewStats.innerHTML = `<strong>View Duration</strong> ${durationMillis}ms`;
 
   ui.viewTimeTicks.innerHTML = "";
   const tickMillis = Math.max(Math.floor(durationMillis / 10), 1);
@@ -221,6 +242,56 @@ function renderView() {
     tick.style.left = leftPosition(time);
     tick.style.top = "-20px";
   }
+
+  let i;
+  for (i = eventElementsStart; i < eventElementsEnd; i += 1) {
+    if (logContent.events[i].time >= viewStart) {
+      break;
+    }
+    eventElements.get(i).remove();
+    eventElements.delete(i);
+  }
+  eventElementsStart = i;
+  for (; i < eventElementsEnd; i += 1) {
+    const event = logContent.events[i];
+    if (event.time >= viewEnd) {
+      break;
+    }
+    eventElements.get(i).style.left = leftPosition(event.time);
+  }
+  const j = i;
+  for (; i < eventElementsEnd; i += 1) {
+    eventElements.get(i).remove();
+    eventElements.delete(i);
+  }
+  eventElementsEnd = j;
+
+  for (i = eventElementsEnd; i < logContent.events.length; i += 1) {
+    const event = logContent.events[i];
+    if (event.time >= viewEnd) {
+      break;
+    }
+    const eventElement = createEventElement(event);
+    eventElement.style.left = leftPosition(event.time);
+    appendEventElement(event, eventElement);
+
+    eventElements.set(i, eventElement);
+  }
+  eventElementsEnd = i;
+  for (i = eventElementsStart; i > 0; i -= 1) {
+    const event = logContent.events[i - 1];
+    if (event.time < viewStart) {
+      break;
+    }
+    const eventElement = createEventElement(event);
+    eventElement.style.left = leftPosition(event.time);
+    appendEventElement(event, eventElement);
+
+    eventElements.set(i - 1, eventElement);
+  }
+  eventElementsStart = i;
+
+  ui.viewStats.innerHTML = `<strong>View Start</strong> ${viewStart}ms <strong>Duration</strong> ${durationMillis}ms`;
 }
 
 function leftPosition(time) {
@@ -250,6 +321,33 @@ function updateViewTimeRange(key) {
     viewEnd += offset - leftOffset;
   }
   renderView();
+}
+
+function createEventElement(event) {
+  const eventElement = document.createElement('div');
+  eventElement.innerText = event.type;
+  eventElement.style.border = "1px solid";
+  eventElement.style.width = "100px";
+  eventElement.style.height = "50px";
+  eventElement.style.background = "white";
+  eventElement.style.position = "absolute";
+  return eventElement;
+}
+
+function appendEventElement(event, eventElement) {
+  let node = null;
+  if (event.type === "MessageReceive") {
+    node = event.receiveNode;
+  }
+  if (event.type === "MessageSend") {
+    node = event.sendNode;
+  }
+  if (event.type.startsWith("Timer")) {
+    node = event.node;
+  }
+  if (node !== null) {
+    nodeElements.get(node).appendChild(eventElement);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', createUI);
