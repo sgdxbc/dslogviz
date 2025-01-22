@@ -235,11 +235,15 @@ function renderUI() {
     const node = document.createElement('div');
     ui.viewNodes.appendChild(node);
     node.className = "row";
-    node.innerText = nodeName;
 
     const nodeEvents = document.createElement('div');
     node.appendChild(nodeEvents);
     nodeEvents.className = "timeline-container";
+
+    const label = document.createElement('div');
+    node.appendChild(label);
+    label.className = "node-lable";
+    label.innerText = nodeName;
 
     nodeElements.set(nodeName, nodeEvents);
   }
@@ -260,7 +264,7 @@ function renderView() {
     ui.viewTimeTicks.appendChild(tick);
     tick.className = "tick";
     tick.innerText = `${time}`;
-    tick.style.left = leftPosition(time);
+    tick.style.left = styleLeft(time);
   }
 
   let i;
@@ -277,7 +281,10 @@ function renderView() {
     if (event.time >= viewEnd) {
       break;
     }
-    eventElements.get(i).style.left = leftPosition(event.time);
+    eventElements.get(i).style.left = styleLeft(event.time);
+    if (event.timeEnd !== undefined) {
+      eventElements.get(i).style.width = styleWidth(event.time, event.timeEnd);
+    }
   }
   const j = i;
   for (; i < eventElementsEnd; i += 1) {
@@ -312,8 +319,12 @@ function renderView() {
   ui.viewStats.innerHTML = `<strong>View Start</strong> ${viewStart}ms <strong>Duration</strong> ${durationMillis}ms`;
 }
 
-function leftPosition(time) {
+function styleLeft(time) {
   return `${(time - viewStart) / (viewEnd - viewStart) * 100}%`;
+}
+
+function styleWidth(time, timeEnd) {
+  return timeEnd === Infinity ? "999px" : `calc(${(timeEnd - time) / (viewEnd - viewStart) * 100}% - 10px)`;
 }
 
 function updateViewTimeRange(key) {
@@ -343,23 +354,19 @@ function updateViewTimeRange(key) {
 
 function createEventElement(event) {
   const eventElement = document.createElement('div');
-  eventElement.style.left = leftPosition(event.time);
+  eventElement.style.left = styleLeft(event.time);
 
   if (event.type.endsWith("Receive")) {
     eventElement.className = "span";
     eventElement.innerText = event.name;
-
-    if (event.timeEnd !== Infinity) {
-      eventElement.style.width = `calc(${leftPosition(event.timeEnd)} - ${leftPosition(event.time)} - 10px)`;
-    } else {
-      eventElement.style.width = "999px";
-    }
-    eventElement.style.background = "white";
+    eventElement.style.width = styleWidth(event.time, event.timeEnd);
+    eventElement.style.background = `linear-gradient(to left, hsl(0 0 0 / 0), ${colorByName(event.name)} max(50px, 20%))`;
   } else {
     eventElement.className = "event";
 
     const icon = document.createElement('div');
     eventElement.appendChild(icon);
+    icon.style.color = `hsl(from ${colorByName(event.name)} h s calc(l - 10))`;
     icon.classList.add("fa-solid");
     if (event.type === "MessageSend") {
       icon.classList.add("fa-envelope");
@@ -389,6 +396,13 @@ function appendEventElement(event, eventElement) {
   if (node !== null) {
     nodeElements.get(node).appendChild(eventElement);
   }
+}
+
+// https://stackoverflow.com/a/34842797
+const hashCode = s => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0);
+
+function colorByName(name) {
+  return `hsl(${hashCode(name)} 100 95 / 1)`;
 }
 
 document.addEventListener('DOMContentLoaded', createUI);
