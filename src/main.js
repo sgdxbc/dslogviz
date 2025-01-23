@@ -284,7 +284,7 @@ function renderView() {
   for (const [i, element] of spanElements.entries()) {
     const span = logContent.spans[i];
     element.style.left = styleLeft(span.time);
-    if (span.type.endsWith("Receive")) {
+    if (span.type.endsWith("Receive") || span.type === "->") {
       element.style.width = styleWidth(span.time, span.endTime);
     }
   }
@@ -292,8 +292,12 @@ function renderView() {
   ui.viewStats.innerHTML = `<strong>View Start</strong> ${viewStartTime}ms <strong>Duration</strong> ${durationMillis}ms`;
 }
 
-function styleTop(row, offset = 0) {
-  return `${row * 173 + 170 + offset}px`;
+function styleTopPx(row) {
+  return row * 173 + 170;
+}
+
+function styleTop(row) {
+  return `${styleTopPx(row)}px`;
 }
 
 function styleLeft(time) {
@@ -312,7 +316,21 @@ function createSpanElement(span) {
     element.innerText = span.name;
     element.style.background = `linear-gradient(to left, hsl(0 0 0 / 0), ${colorByName(span.name)} max(50px, 20%))`;
   } else if (span.type === "->") {
-
+    const sourceTopPx = styleTopPx(nodeRows.get(span.sourceNode));
+    const destinationTopPx = styleTopPx(nodeRows.get(span.destinationNode));
+    if (sourceTopPx != destinationTopPx) {
+      element.className = "diag";
+      element.style.top = `${Math.min(sourceTopPx, destinationTopPx)}px`;
+      element.style.height = `${Math.abs(sourceTopPx - destinationTopPx)}px`;
+      if (sourceTopPx < destinationTopPx) {
+        element.classList.add("point-down");
+      } else {
+        element.classList.add("point-up");
+      }
+    } else {
+      element.className = "loopback";
+      element.style.top = `${sourceTopPx}px`;
+    }
   } else {
     element.className = "event";
 
