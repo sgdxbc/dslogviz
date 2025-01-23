@@ -25,13 +25,19 @@ body {
 #view {
     margin: 10px;
     border: 1px solid;
+    position: relative;
+    padding-bottom: 10px;
+}
+
+#view-stats {
+    position: absolute;
 }
 
 .row {
     height: 100px;
     margin-bottom: 50px;
-    border-bottom: solid;
-    padding-top: 20px;
+    border-bottom: 3px solid;
+    padding: 20px 0 0 10px;
 }
 
 .row#time {
@@ -46,7 +52,7 @@ body {
 
 .tick {
     position: absolute;
-    top: 10px;
+    top: 50px;
 }
 
 .node-label {
