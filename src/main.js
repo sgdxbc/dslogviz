@@ -1,6 +1,7 @@
 import './style.css'
+import instructionHTML from "./instruction.html?raw"
 
-const ui = { header: null, stats: null, view: null, viewStats: null, viewTimeTicks: null, viewNodes: null }
+const ui = { title: null, stats: null, view: null, viewStats: null, viewTimeTicks: null, viewNodes: null }
 
 let logName = "lab0-test1.txt";
 let logContent =
@@ -19,11 +20,18 @@ function createUI() {
     return;
   }
 
-  ui.header = document.createElement("div");
-  app.appendChild(ui.header);
+  ui.title = document.createElement("div");
+  ui.title.id = "title";
+  app.appendChild(ui.title);
+
+  const uploadButtonLabel = document.createElement('label');
+  app.appendChild(uploadButtonLabel);
+  uploadButtonLabel.id = "upload";
+  uploadButtonLabel.innerText = "Load Log File";
+  uploadButtonLabel.htmlFor = "upload-log-file";
 
   const uploadButton = document.createElement("input");
-  app.appendChild(uploadButton);
+  uploadButtonLabel.appendChild(uploadButton);
   uploadButton.id = "upload-log-file";
   uploadButton.type = "file";
   uploadButton.addEventListener('change', () => {
@@ -36,37 +44,19 @@ function createUI() {
     const fileReader = new FileReader();
     fileReader.onload = () => {
       logName = file.name;
-      ui.header.innerHTML = "Processing";
+      ui.title.innerHTML = "Processing";
       requestAnimationFrame(() => {
         logContent = processLog(fileReader.result);
         renderUI();
       });
     };
-    ui.header.innerHTML = "Loading";
+    ui.title.innerHTML = "Loading";
     fileReader.readAsText(file);
   });
 
-  const uploadButtonLabel = document.createElement('label');
-  app.appendChild(uploadButtonLabel);
-  uploadButtonLabel.innerText = "Log File";
-  uploadButtonLabel.htmlFor = "upload-log-file";
-  uploadButtonLabel.hidden = true;
-
-  const instruction = document.createElement('div');
+  const instruction = document.createElement('div');  
   app.appendChild(instruction);
-  instruction.innerHTML = `<ul>
-  <li>Usage: run <code>run-tests.py</code> with additional arguments <code>-g FINEST 2>$LOG_FILE</code>, for example
-  <pre>./run-tests.py --lab 0 --test 1 -g FINEST 2>lab0-test1.txt</pre>
-  then load the dumped log file here.</li>
-  <li>Only logs are supported. Use e.g. <code>LOG.info(...)</code> instead of <code>System.out.println(...)</code> to produce custom logs.</li>
-  <li>Use left and right arrow keys to move around the timeline. Use up and down arrow keys to zoom in and zoom out the timeline.</li>
-  <li>This visualization tool is only for run tests; do not use it with search tests. Actually, never enable logging for search tests.</li>
-  <li>The visualization cannot identify the idle period of nodes with the logs produced by the testing framework and assumes the nodes are always processing messages and timers.
-  The actual processing may be ended before the rendered time (which is implied by the fading out).</li>
-  <li>Logging may affect the performance and concurrency of the solution. Make sure to rerun the test with logging disabled after it passes with logging enabled.</li>
-  <li>This visualization tool is not intended to serve as an end-to-end debugging solution for run tests, different from the DSLabs' built-in visualization (for search tests).
-  The users are still expected to understand the logs and be able to manually exam the logs (and probably actually manually exam the simple ones), and only use this as a viewer to perceive the logs more efficiently.</li>
-</ul>`;
+  instruction.innerHTML = instructionHTML;
 
   ui.stats = document.createElement('div');
   app.appendChild(ui.stats);
@@ -224,7 +214,7 @@ let eventElementsStart = 0, eventElementsEnd = 0;
 
 // calling once per loading log file
 function renderUI() {
-  ui.header.innerHTML = `<strong>DSLabs Log Visualizer:</strong> ${logName}`;
+  ui.title.innerHTML = `<strong>DSLabs Log Visualizer:</strong> ${logName}`;
 
   const duration = logContent.events.length === 0 ? 0 : Math.round(logContent.events[logContent.events.length - 1].time);
   ui.stats.innerHTML = `<strong>Start</strong> ${new Date(logContent.offset).toLocaleString()} <strong>Duration</strong> ${duration}ms (processing the last message/timer may take a bit more)`;
@@ -405,7 +395,7 @@ function appendEventElement(event, eventElement) {
 const hashCode = s => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0);
 
 function colorByName(name) {
-  return `hsl(${hashCode(name)} 100 95 / 1)`;
+  return `hsl(${hashCode(name)} 100 95)`;
 }
 
 document.addEventListener('DOMContentLoaded', createUI);
