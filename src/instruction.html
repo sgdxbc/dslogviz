@@ -1,22 +1,29 @@
-<ul>
-    <li>Usage: run <code>run-tests.py</code> with additional arguments <code>-g FINEST 2>$LOG_FILE</code>, for example
+<ul class="fa-ul">
+    <li><span class="fa-li"><i class="fa-solid fa-caret-right"></i></span>
+        Usage: run <code>run-tests.py</code> with additional arguments <code>-g FINEST 2>$LOG_FILE</code>, for example
         <pre>./run-tests.py --lab 0 --test 1 -g FINEST 2>lab0-test1.txt</pre>
         then load the dumped log file here.
     </li>
-    <li>Only logs are supported. Use e.g. <code>LOG.info(...)</code> instead of <code>System.out.println(...)</code> to
+    <li><span class="fa-li"><i class="fa-solid fa-caret-right"></i></span>
+        Only logs are supported. Use e.g. <code>LOG.info(...)</code> instead of <code>System.out.println(...)</code> to
         produce custom logs.</li>
-    <li><strong>Use left and right arrow keys to move around the timeline. Use up and down arrow keys to zoom in and
-            zoom
-            out the timeline.</strong></li>
-    <li>This visualization tool is only for run tests; do not use it with search tests. Actually, never enable logging
+    <li><span class="fa-li"><i class="fa-solid fa-caret-right"></i></span>
+        <strong>Use left and right arrow keys to move around the timeline. Use up and down arrow keys to zoom in and
+            zoom out the timeline.</strong>
+    </li>
+    <li><span class="fa-li"><i class="fa-solid fa-caret-right"></i></span>
+        This visualization tool is only for run tests; do not use it with search tests. Actually, never enable logging
         for
         search tests.</li>
-    <li>The visualization cannot identify the idle period of nodes with the logs produced by the testing framework and
+    <li><span class="fa-li"><i class="fa-solid fa-caret-right"></i></span>
+        The visualization cannot identify the idle period of nodes with the logs produced by the testing framework and
         assumes the nodes are always processing messages and timers.
         The actual processing may be ended before the rendered time (which is implied by the fading out).</li>
-    <li>Logging may affect the performance and concurrency of the solution. Make sure to rerun the test with logging
+    <li><span class="fa-li"><i class="fa-solid fa-caret-right"></i></span>
+        Logging may affect the performance and concurrency of the solution. Make sure to rerun the test with logging
         disabled after it passes with logging enabled.</li>
-    <li>This visualization tool is not intended to serve as an end-to-end debugging solution for run tests, different
+    <li><span class="fa-li"><i class="fa-solid fa-caret-right"></i></span>
+        This visualization tool is not intended to serve as an end-to-end debugging solution for run tests, different
         from
         the DSLabs' built-in visualization (for search tests).
         The users are still expected to understand the logs and be able to manually exam the logs (and probably actually
