@@ -235,17 +235,38 @@ function renderView() {
   }
 
   let i;
-  for (i = maxStartIndex; i < logContent.spans.length; i += 1) {
+  for (i = maxStartIndex; i > 0; i -= 1) {
+    const span = logContent.spans[i - 1];
+    if (span.time < viewEndTime) {
+      break;
+    }
+    spanElements.get(i - 1).remove();
+    spanElements.delete(i - 1);
+  }
+  for (; i < logContent.spans.length; i += 1) {
     const span = logContent.spans[i];
     if (span.time >= viewEndTime) {
       break;
+    }
+    if (spanElements.has(i)) {
+      console.warn("Duplicated rendering span", logContent.spans[i]);
+      continue;
     }
     const element = createSpanElement(span);
     ui.viewSpans.appendChild(element);
     spanElements.set(i, element);
   }
   maxStartIndex = i;
-  for (i = minEndIndex; i > 0; i -= 1) {
+
+  for (i = minEndIndex; i < logContent.endSpans.length; i += 1) {
+    const endSpan = logContent.endSpans[i];
+    if (endSpan.endTime >= viewStartTime) {
+      break;
+    }
+    spanElements.get(endSpan.index).remove();
+    spanElements.delete(endSpan.index);
+  }
+  for (; i > 0; i -= 1) {
     const endSpan = logContent.endSpans[i - 1];
     if (endSpan.endTime < viewStartTime) {
       break;
@@ -260,19 +281,67 @@ function renderView() {
   }
   minEndIndex = i;
 
-  ui.viewStats.innerHTML = `<strong>View Start</strong> ${viewStartTime}ms <strong>Duration</strong> ${durationMillis}ms`;
-}
+  for (const [i, element] of spanElements.entries()) {
+    const span = logContent.spans[i];
+    element.style.left = styleLeft(span.time);
+    if (span.type.endsWith("Receive")) {
+      element.style.width = styleWidth(span.time, span.endTime);
+    }
+  }
 
-function styleLeft(time) {
-  return `${(time - viewStartTime) / (viewEndTime - viewStartTime) * 90 + 5}%`;
+  ui.viewStats.innerHTML = `<strong>View Start</strong> ${viewStartTime}ms <strong>Duration</strong> ${durationMillis}ms`;
 }
 
 function styleTop(row, offset = 0) {
   return `${row * 173 + 170 + offset}px`;
 }
 
-function styleWidth(time, timeEnd) {
-  return timeEnd === Infinity ? "999px" : `calc(${(timeEnd - time) / (viewEndTime - viewStartTime) * 100}% - 10px)`;
+function styleLeft(time) {
+  return `${(time - viewStartTime) / (viewEndTime - viewStartTime) * 90 + 5}%`;
+}
+
+function styleWidth(time, endTime) {
+  return endTime === Infinity ? "999px" : `calc(${(endTime - time) / (viewEndTime - viewStartTime) * 90}% - 10px)`;
+}
+
+function createSpanElement(span) {
+  const element = document.createElement('div');
+
+  if (span.type.endsWith("Receive")) {
+    element.className = "span";
+    element.innerText = span.name;
+    element.style.background = `linear-gradient(to left, hsl(0 0 0 / 0), ${colorByName(span.name)} max(50px, 20%))`;
+  } else if (span.type === "->") {
+
+  } else {
+    element.className = "event";
+
+    const icon = document.createElement('div');
+    element.appendChild(icon);
+    icon.style.color = `hsl(from ${colorByName(span.name)} h s calc(l - 10))`;
+    icon.classList.add("fa-solid");
+    const name = document.createElement('div');
+    element.appendChild(name);
+    name.innerText = span.name;
+
+    if (span.type === "MessageSend") {
+      icon.classList.add("fa-envelope");
+    }
+    if (span.type === "TimerSet") {
+      icon.classList.add("fa-clock");
+    }
+  }
+
+  if (span.type === "MessageReceive") {
+    element.style.top = styleTop(nodeRows.get(span.receiveNode));
+  }
+  if (span.type === "MessageSend") {
+    element.style.top = styleTop(nodeRows.get(span.sendNode));
+  }
+  if (span.type.startsWith("Timer")) {
+    element.style.top = styleTop(nodeRows.get(span.node));
+  }
+  return element;
 }
 
 function updateViewTimeRange(key) {
@@ -298,48 +367,6 @@ function updateViewTimeRange(key) {
     viewEndTime += offset - leftOffset;
   }
   renderView();
-}
-
-function createSpanElement(span) {
-  const eventElement = document.createElement('div');
-  eventElement.style.left = styleLeft(span.time);
-
-  if (span.type.endsWith("Receive")) {
-    eventElement.className = "span";
-    eventElement.innerText = span.name;
-    eventElement.style.width = styleWidth(span.time, span.endTime);
-    eventElement.style.background = `linear-gradient(to left, hsl(0 0 0 / 0), ${colorByName(span.name)} max(50px, 20%))`;
-  } else if (span.type === "->") {
-
-  } else {
-    eventElement.className = "event";
-
-    const icon = document.createElement('div');
-    eventElement.appendChild(icon);
-    icon.style.color = `hsl(from ${colorByName(span.name)} h s calc(l - 10))`;
-    icon.classList.add("fa-solid");
-    const name = document.createElement('div');
-    eventElement.appendChild(name);
-    name.innerText = span.name;
-
-    if (span.type === "MessageSend") {
-      icon.classList.add("fa-envelope");
-    }
-    if (span.type === "TimerSet") {
-      icon.classList.add("fa-clock");
-    }
-  }
-
-  if (span.type === "MessageReceive") {
-    eventElement.style.top = styleTop(nodeRows.get(span.receiveNode));
-  }
-  if (span.type === "MessageSend") {
-    eventElement.style.top = styleTop(nodeRows.get(span.sendNode));
-  }
-  if (span.type.startsWith("Timer")) {
-    eventElement.style.top = styleTop(nodeRows.get(span.node));
-  }
-  return eventElement;
 }
 
 // https://stackoverflow.com/a/34842797
